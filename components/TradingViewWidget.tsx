@@ -1,8 +1,8 @@
 "use client";
 
+import React, { memo } from "react";
+import { cn } from "@/lib/utils";
 import useTradingViewWidget from "@/hooks/UseTradingViewWidget";
-// TradingViewWidget.jsx
-import React, { useRef, memo } from "react";
 
 interface TradingViewWidgetProps {
   title?: string;
@@ -23,22 +23,17 @@ function TradingViewWidget({
 
   return (
     <div className="w-full">
-        {title && <h3 className="font-semibold text-2xl text-gray-100 mb-5  ">{title}</h3>}
+      {title && (
+        <h3 className="font-semibold text-2xl text-gray-100 mb-5">{title}</h3>
+      )}
       <div
-        className="tradingview-widget-container"
+        className={cn("tradingview-widget-container", className)}
         ref={containerRef}
-        style={{ height: `${height}px`, width: "100%" }}
       >
-        <div className="tradingview-widget-copyright">
-          <a
-            href="https://www.tradingview.com/"
-            rel="noopener nofollow"
-            target="_blank"
-          >
-            <span className="blue-text">Market Overview</span>
-          </a>
-          <span className="trademark"> by TradingView</span>
-        </div>
+        <div
+          className="tradingview-widget-container__widget"
+          style={{ height, width: "100%" }}
+        />
       </div>
     </div>
   );
