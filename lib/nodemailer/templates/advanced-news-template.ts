@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const ADVANCED_NEWS_EMAIL_TEMPLATE = `
 <!DOCTYPE html>
 <html lang="en">

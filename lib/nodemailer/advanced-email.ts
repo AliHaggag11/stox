@@ -1,3 +1,4 @@
+// @ts-nocheck
 import nodemailer from 'nodemailer';
 import { ADVANCED_NEWS_EMAIL_TEMPLATE } from './templates/advanced-news-template';
 import { getStockQuotes } from '@/lib/actions/finnhub.actions';

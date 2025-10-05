@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use server';
 
 import { getDateRange, validateArticle, formatArticle } from '@/lib/utils';

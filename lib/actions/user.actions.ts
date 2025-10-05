@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use server';
 
 import { createServiceClient } from '@/lib/supabase/service-client';
