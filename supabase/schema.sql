@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS public.users (
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   country TEXT,
+  email_notifications BOOLEAN DEFAULT TRUE,
+  public_profile BOOLEAN DEFAULT FALSE,
+  dark_mode BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

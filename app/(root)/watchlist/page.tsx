@@ -1,78 +1,72 @@
-import { auth } from "@/lib/better-auth/auth";
-import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server-client";
 import { getUserWatchlist } from "@/lib/actions/watchlist.actions";
-import WatchlistTable from "@/components/WatchlistTable";
+import EnhancedWatchlist from "@/components/EnhancedWatchlist";
+import SearchCommand from "@/components/SearchCommand";
 
 export default async function WatchlistPage() {
-  const authInstance = await auth;
-  const session = await authInstance.api.getSession({ headers: await headers() });
+  const supabase = await createClient();
   
-  if (!session?.user) {
-    return <div>Please sign in to view your watchlist.</div>;
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (!user || error) {
+    redirect('/sign-in');
   }
 
-  const watchlist = await getUserWatchlist(session.user.id);
+  const watchlist = await getUserWatchlist(user.id);
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="watchlist-title">My Watchlist</h1>
-        <p className="text-gray-400">
-          {watchlist.length} {watchlist.length === 1 ? 'stock' : 'stocks'} in watchlist
-        </p>
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-100 mb-2">My Watchlist</h1>
+          <p className="text-gray-400">
+            {watchlist.length} {watchlist.length === 1 ? 'stock' : 'stocks'} • 
+            Track your favorite stocks
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <SearchCommand 
+            renderAs="button" 
+            label="Add Stocks" 
+            initialStocks={[]}
+          />
+        </div>
       </div>
 
       {watchlist.length === 0 ? (
-        <div className="watchlist-empty-container">
-          <div className="watchlist-empty">
-            <svg
-              className="watchlist-star"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.385a.563.563 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345l2.125-5.111z"
-              />
-            </svg>
-            <h2 className="empty-title">Your watchlist is empty</h2>
-            <p className="empty-description">
-              Start building your watchlist by searching for stocks and adding them to track their performance.
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="w-12 h-12 mx-auto mb-6 text-gray-500">
+              <svg
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-100 mb-3">Start Tracking Stocks</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              Add stocks to your watchlist to track their performance, set price alerts, 
+              and stay updated with real-time market data.
             </p>
-            <a 
-              href="/search" 
-              className="yellow-btn px-6 py-3 inline-block"
-            >
-              Search Stocks
-            </a>
+            <SearchCommand 
+              renderAs="button" 
+              label="Search & Add Stocks" 
+              initialStocks={[]}
+            />
           </div>
         </div>
       ) : (
-        <div className="watchlist-container">
-          <div className="watchlist">
-            <WatchlistTable watchlist={watchlist} />
-          </div>
-          <div className="watchlist-alerts">
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <a 
-                  href="/search" 
-                  className="block w-full text-center yellow-btn py-2"
-                >
-                  Add More Stocks
-                </a>
-                <button className="block w-full text-center bg-gray-700 hover:bg-gray-600 text-gray-100 py-2 rounded transition-colors">
-                  Set Price Alerts
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EnhancedWatchlist watchlist={watchlist} userId={user.id} />
       )}
     </div>
   );

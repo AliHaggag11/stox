@@ -28,6 +28,8 @@ export const sendWelcomeEmail = async ({ email, name, intro }: WelcomeEmailData)
 export const sendNewsSummaryEmail = async (
     { email, date, newsContent }: { email: string; date: string; newsContent: string }
 ): Promise<void> => {
+    console.log('sendNewsSummaryEmail called with:', { email, date, newsContentLength: newsContent?.length });
+    
     const htmlTemplate = NEWS_SUMMARY_EMAIL_TEMPLATE
         .replace('{{date}}', date)
         .replace('{{newsContent}}', newsContent);
@@ -40,5 +42,17 @@ export const sendNewsSummaryEmail = async (
         html: htmlTemplate,
     };
 
-    await transporter.sendMail(mailOptions);
+    console.log('Sending email with options:', { 
+        from: mailOptions.from, 
+        to: mailOptions.to, 
+        subject: mailOptions.subject 
+    });
+
+    try {
+        const result = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', result.messageId);
+    } catch (error) {
+        console.error('Email sending failed:', error);
+        throw error;
+    }
 };

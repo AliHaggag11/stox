@@ -4,10 +4,11 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import InputField from '@/components/forms/InputField';
 import FooterLink from '@/components/forms/FooterLink';
-import {signInWithEmail, signUpWithEmail} from "@/lib/actions/auth.actions";
+import {signInWithEmail} from "@/lib/actions/auth.actions";
 import {toast} from "sonner";
-import {signInEmail} from "better-auth/api";
 import {useRouter} from "next/navigation";
+import { useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 const SignIn = () => {
     const router = useRouter()
@@ -22,6 +23,20 @@ const SignIn = () => {
         },
         mode: 'onBlur',
     });
+
+    // Check if user is already authenticated
+    useEffect(() => {
+        const checkAuth = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                router.push('/');
+            }
+        };
+        
+        checkAuth();
+    }, [router]);
 
     const onSubmit = async (data: SignInFormData) => {
         try {

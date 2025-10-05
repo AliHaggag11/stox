@@ -1,23 +1,35 @@
 import Header from "@/components/Header";
-import {auth} from "@/lib/better-auth/auth";
-import {headers} from "next/headers";
-import {redirect} from "next/navigation";
+import GlobalSearchProvider from "@/components/GlobalSearchProvider";
+import { createClient } from "@/lib/supabase/server-client";
+import { redirect } from "next/navigation";
 
 const Layout = async ({ children }: { children : React.ReactNode }) => {
-    const authInstance = await auth;
-    const session = await authInstance.api.getSession({ headers: await headers() });
+    const supabase = await createClient();
+    
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (!user || error) {
+        redirect('/sign-in');
+    }
 
-    if(!session?.user) redirect('/sign-in');
+    // Get user data from our database
+    const { data: userData } = await supabase
+        .from('users')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
 
-    const user = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
+    const userInfo = {
+        id: user.id,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        avatar_url: userData?.avatar_url || null,
     }
 
     return (
         <main className="min-h-screen text-gray-400">
-            <Header user={user} />
+            <GlobalSearchProvider />
+            <Header user={userInfo} />
 
             <div className="container py-10">
                 {children}

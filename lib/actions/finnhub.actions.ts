@@ -179,3 +179,86 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
   }
 });
 
+// Real stock data interface
+export interface StockQuote {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  marketCap: number;
+  pe: number;
+  high52w: number;
+  low52w: number;
+  open: number;
+  high: number;
+  low: number;
+  previousClose: number;
+}
+
+// Get real stock quotes for multiple symbols
+export const getStockQuotes = cache(async (symbols: string[]): Promise<Record<string, StockQuote>> => {
+  try {
+    const token = process.env.FINNHUB_API_KEY ?? NEXT_PUBLIC_FINNHUB_API_KEY;
+    if (!token) {
+      console.error('FINNHUB API key is not configured');
+      return {};
+    }
+
+    const results: Record<string, StockQuote> = {};
+
+    // Fetch quotes for each symbol
+    await Promise.all(
+      symbols.map(async (symbol) => {
+        try {
+          const [quoteUrl, profileUrl] = await Promise.all([
+            `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${token}`,
+            `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${token}`
+          ]);
+
+          const [quote, profile] = await Promise.all([
+            fetchJSON<any>(quoteUrl, 60), // Cache for 1 minute
+            fetchJSON<any>(profileUrl, 3600) // Cache for 1 hour
+          ]);
+
+          if (quote && quote.c !== undefined) {
+            const currentPrice = quote.c;
+            const previousClose = quote.pc || currentPrice;
+            const change = currentPrice - previousClose;
+            const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+
+            results[symbol] = {
+              symbol,
+              price: currentPrice,
+              change,
+              changePercent,
+              volume: quote.v || 0,
+              marketCap: profile?.marketCapitalization || 0,
+              pe: profile?.pe || 0,
+              high52w: quote.h || currentPrice,
+              low52w: quote.l || currentPrice,
+              open: quote.o || currentPrice,
+              high: quote.h || currentPrice,
+              low: quote.l || currentPrice,
+              previousClose
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching quote for ${symbol}:`, error);
+        }
+      })
+    );
+
+    return results;
+  } catch (error) {
+    console.error('Error fetching stock quotes:', error);
+    return {};
+  }
+});
+
+// Get individual stock quote
+export const getStockQuote = cache(async (symbol: string): Promise<StockQuote | null> => {
+  const quotes = await getStockQuotes([symbol]);
+  return quotes[symbol] || null;
+});
+

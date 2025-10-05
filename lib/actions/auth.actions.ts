@@ -1,11 +1,11 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server-client';
 import { inngest } from "@/lib/inngest/client";
 
 export const signUpWithEmail = async ({ email, password, fullName, country, investmentGoals, riskTolerance, preferredIndustry }: SignUpFormData) => {
     try {
-        const supabase = createClient();
+        const supabase = await createClient();
         
         const { data, error } = await supabase.auth.signUp({
             email,
@@ -32,6 +32,10 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
 
             if (insertError) {
                 console.error('Error creating user profile:', insertError);
+                // Don't return error here as the auth signup was successful
+                // The user profile creation can be retried later
+            } else {
+                console.log('User profile created successfully');
             }
 
             await inngest.send({
@@ -49,7 +53,7 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
 
 export const signInWithEmail = async ({ email, password }: SignInFormData) => {
     try {
-        const supabase = createClient();
+        const supabase = await createClient();
         
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
@@ -69,7 +73,7 @@ export const signInWithEmail = async ({ email, password }: SignInFormData) => {
 
 export const signOut = async () => {
     try {
-        const supabase = createClient();
+        const supabase = await createClient();
         await supabase.auth.signOut();
         return { success: true };
     } catch (e) {

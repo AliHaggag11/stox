@@ -1,5 +1,8 @@
 import TradingViewWidget from "@/components/TradingViewWidget";
 import WatchlistButton from "@/components/WatchlistButton";
+import { auth } from "@/lib/better-auth/auth";
+import { headers } from "next/headers";
+import { isInWatchlist } from "@/lib/actions/watchlist.actions";
 import {
   SYMBOL_INFO_WIDGET_CONFIG,
   CANDLE_CHART_WIDGET_CONFIG,
@@ -12,6 +15,13 @@ import {
 export default async function StockDetails({ params }: StockDetailsPageProps) {
   const { symbol } = await params;
   const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
+  
+  // Get user session
+  const authInstance = await auth;
+  const session = await authInstance.api.getSession({ headers: await headers() });
+  
+  // Check if stock is in user's watchlist
+  const inWatchlist = session?.user ? await isInWatchlist(session.user.id, symbol) : false;
 
   return (
     <div className="flex min-h-screen p-4 md:p-6 lg:p-8">
@@ -42,7 +52,16 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
         {/* Right column */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <WatchlistButton symbol={symbol.toUpperCase()} company={symbol.toUpperCase()} isInWatchlist={false} />
+            {session?.user ? (
+              <WatchlistButton 
+                symbol={symbol.toUpperCase()} 
+                company={symbol.toUpperCase()} 
+                isInWatchlist={inWatchlist}
+                userId={session.user.id}
+              />
+            ) : (
+              <p className="text-gray-500">Please sign in to add to watchlist</p>
+            )}
           </div>
 
           <TradingViewWidget

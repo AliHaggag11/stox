@@ -1,10 +1,12 @@
 import {inngest} from "@/lib/inngest/client";
 import {NEWS_SUMMARY_EMAIL_PROMPT, PERSONALIZED_WELCOME_EMAIL_PROMPT} from "@/lib/inngest/prompts";
 import {sendNewsSummaryEmail, sendWelcomeEmail} from "@/lib/nodemailer";
+import {sendAdvancedNewsEmail} from "@/lib/nodemailer/advanced-email";
 import {getAllUsersForNewsEmail} from "@/lib/actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getFormattedTodayDate } from "@/lib/utils";
+import type { UserForNewsEmail, MarketNewsArticle } from "@/types/global";
 
 export const sendSignUpEmail = inngest.createFunction(
     { id: 'sign-up-email' },
@@ -32,6 +34,42 @@ export const sendSignUpEmail = inngest.createFunction(
             }
         })
 
+        // First create user record in database
+        await step.run('create-user-record', async () => {
+            const { createClient } = await import('@/lib/supabase/server-client');
+            const supabase = await createClient();
+            
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            if (authError || !user) {
+                console.error('Failed to get user from auth:', authError);
+                return { success: false, error: 'User not found in auth' };
+            }
+
+            const { data, error } = await supabase
+                .from('users')
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    name: event.data.name,
+                    country: event.data.country,
+                    email_notifications: true,
+                    public_profile: false,
+                    dark_mode: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .select();
+
+            if (error) {
+                console.error('Failed to create user record:', error);
+                return { success: false, error: error.message };
+            }
+
+            console.log('User record created successfully:', data);
+            return { success: true, data };
+        });
+
         await step.run('send-welcome-email', async () => {
             const part = response.candidates?.[0]?.content?.parts?.[0];
             const introText = (part && 'text' in part ? part.text : null) ||'Thanks for joining Signalist. You now have the tools to track markets and make smarter moves.'
@@ -54,8 +92,12 @@ export const sendDailyNewsSummary = inngest.createFunction(
     async ({ step }) => {
         // Step #1: Get all users for news delivery
         const users = await step.run('get-all-users', getAllUsersForNewsEmail)
+        console.log('Users found for news email:', users?.length || 0);
 
-        if(!users || users.length === 0) return { success: false, message: 'No users found for news email' };
+        if(!users || users.length === 0) {
+            console.log('No users found for news email');
+            return { success: false, message: 'No users found for news email' };
+        }
 
         // Step #2: For each user, get watchlist symbols -> fetch news (fallback to general)
         const results = await step.run('fetch-user-news', async () => {
@@ -104,15 +146,51 @@ export const sendDailyNewsSummary = inngest.createFunction(
                 }
             }
 
-        // Step #4: (placeholder) Send the emails
+        // Step #4: Send the emails
         await step.run('send-news-emails', async () => {
-                await Promise.all(
+                console.log('Sending emails to', userNewsSummaries.length, 'users');
+                const emailResults = await Promise.all(
                     userNewsSummaries.map(async ({ user, newsContent}) => {
-                        if(!newsContent) return false;
+                        if(!newsContent) {
+                            console.log('No news content for user:', user.email);
+                            return false;
+                        }
 
-                        return await sendNewsSummaryEmail({ email: user.email, date: getFormattedTodayDate(), newsContent })
+                        try {
+                            console.log('Sending advanced email to:', user.email);
+                            
+                            // Get user's watchlist symbols for personalized content
+                            const userWatchlistSymbols = await getWatchlistSymbolsByEmail(user.email);
+                            
+                            const result = await sendAdvancedNewsEmail({ 
+                                email: user.email, 
+                                date: getFormattedTodayDate(), 
+                                newsContent,
+                                userWatchlist: userWatchlistSymbols
+                            });
+                            console.log('Advanced email sent successfully to:', user.email);
+                            return true;
+                        } catch (error) {
+                            console.error('Failed to send advanced email to:', user.email, error);
+                            
+                            // Fallback to basic email if advanced fails
+                            try {
+                                console.log('Falling back to basic email for:', user.email);
+                                await sendNewsSummaryEmail({ 
+                                    email: user.email, 
+                                    date: getFormattedTodayDate(), 
+                                    newsContent 
+                                });
+                                console.log('Basic email sent successfully to:', user.email);
+                                return true;
+                            } catch (fallbackError) {
+                                console.error('Both advanced and basic email failed for:', user.email, fallbackError);
+                                return false;
+                            }
+                        }
                     })
-                )
+                );
+                console.log('Email sending results:', emailResults);
             })
 
         return { success: true, message: 'Daily news summary emails sent successfully' }

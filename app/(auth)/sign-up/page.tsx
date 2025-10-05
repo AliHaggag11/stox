@@ -10,6 +10,8 @@ import FooterLink from "@/components/forms/FooterLink";
 import {signUpWithEmail} from "@/lib/actions/auth.actions";
 import {useRouter} from "next/navigation";
 import {toast} from "sonner";
+import { useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 const SignUp = () => {
     const router = useRouter()
@@ -30,6 +32,20 @@ const SignUp = () => {
         },
         mode: 'onBlur'
     }, );
+
+    // Check if user is already authenticated
+    useEffect(() => {
+        const checkAuth = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                router.push('/');
+            }
+        };
+        
+        checkAuth();
+    }, [router]);
 
     const onSubmit = async (data: SignUpFormData) => {
         try {

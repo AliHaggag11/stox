@@ -266,7 +266,7 @@
     @apply flex flex-col items-center justify-center text-center;
   }
   .watchlist-star {
-    @apply h-16 w-16 text-gray-500 mb-4;
+    @apply h-8 w-8 text-gray-500 mb-4;
   }
   .empty-title {
     @apply text-xl font-semibold text-gray-400 mb-2;

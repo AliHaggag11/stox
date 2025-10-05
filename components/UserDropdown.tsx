@@ -11,16 +11,24 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {useRouter} from "next/navigation";
 import {Button} from "@/components/ui/button";
-import {LogOut} from "lucide-react";
+import {LogOut, User} from "lucide-react";
 import NavItems from "@/components/NavItems";
-import {signOut} from "@/lib/actions/auth.actions";
+import { createClient } from '@/lib/supabase/client';
 
 const UserDropdown = ({ user, initialStocks }: {user: User, initialStocks: StockWithWatchlistStatus[]}) => {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        await signOut();
-        router.push("/sign-in");
+        try {
+            const supabase = createClient();
+            await supabase.auth.signOut();
+            // Force a page reload to clear any cached data
+            window.location.href = "/sign-in";
+        } catch (error) {
+            console.error('Sign out error:', error);
+            // Fallback: still redirect even if signOut fails
+            window.location.href = "/sign-in";
+        }
     }
 
     return (
@@ -28,7 +36,7 @@ const UserDropdown = ({ user, initialStocks }: {user: User, initialStocks: Stock
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-3 text-gray-4 hover:text-yellow-500">
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src="https://avatars.githubusercontent.com/u/153423955?s=280&v=4" />
+                        <AvatarImage src={user.avatar_url || undefined} />
                         <AvatarFallback className="bg-yellow-500 text-yellow-900 text-sm font-bold">
                             {user.name[0]}
                         </AvatarFallback>
@@ -44,7 +52,7 @@ const UserDropdown = ({ user, initialStocks }: {user: User, initialStocks: Stock
                 <DropdownMenuLabel>
                     <div className="flex relative items-center gap-3 py-2">
                         <Avatar className="h-10 w-10">
-                            <AvatarImage src="https://avatars.githubusercontent.com/u/153423955?s=280&v=4" />
+                            <AvatarImage src={user.avatar_url || undefined} />
                             <AvatarFallback className="bg-yellow-500 text-yellow-900 text-sm font-bold">
                                 {user.name[0]}
                             </AvatarFallback>
@@ -58,6 +66,13 @@ const UserDropdown = ({ user, initialStocks }: {user: User, initialStocks: Stock
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-gray-600"/>
+                <DropdownMenuItem 
+                    onClick={() => router.push('/profile')} 
+                    className="text-gray-100 text-md font-medium focus:bg-transparent focus:text-yellow-500 transition-colors cursor-pointer"
+                >
+                    <User className="h-4 w-4 mr-2 hidden sm:block" />
+                    Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} className="text-gray-100 text-md font-medium focus:bg-transparent focus:text-yellow-500 transition-colors cursor-pointer">
                     <LogOut className="h-4 w-4 mr-2 hidden sm:block" />
                     Logout
